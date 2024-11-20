@@ -115,8 +115,9 @@ int main(void)
     }
 
     // collision with the lower and upper window hegith
-    if (ball.position.y < 0 || ball.position.y > (SCREEN_HEIGHT - ball.size.y))
+    if ((ball.position.y < 0) || (ball.position.y > (SCREEN_HEIGHT - ball.size.y)))
     {
+      ball.position.y = (ball.position.y < 0) ? 0 : (SCREEN_HEIGHT - ball.size.y);
       top = !top;
     }
 
@@ -131,60 +132,60 @@ int main(void)
     ball.position.y += top ? -y : y;
 
     // Player collition
-    // if (rigth == true)
-    // {
-    //   // Check comparations
-    //   for (size_t i = 0; i < berserk.size.y; i++)
-    //   {
-    //     // ball.position collides with the paddle
-    //     // adjust ball.position.x comparative
-    //     if (((int)berserk.position.y + i) == centerVectorBallY + (ball.size.y / 2) && centerVectorBallX <= berserk.position.x)
-    //     {
-    //       float centerPosition = (i - (berserk.size.y / 2));
-    //       degrees = centerPosition * 180.f / berserk.size.y;
-    //       top = centerPosition > 30;
-    //       rigth = false;
-    //     }
-    //   }
-    // }
-    // else
-    // {
-    //   for (size_t i = 0; i < griffith.size.y; i++)
-    //   {
-    //     // ball.position collides with the paddle
-    //     // adjust ball.position.x comparative
-    //     if (((int)griffith.position.y + i) == centerVectorBallY + (ball.size.y / 2) && centerVectorBallX >= griffith.position.x)
-    //     {
-    //       float centerPosition = (i - (griffith.size.y / 2));
-    //       degrees = centerPosition * 180.f / griffith.size.y;
-    //       top = centerPosition > 29;
-    //       rigth = true;
-    //     }
-    //   }
-    // }
-
-    acceleration += 100;
-
-    BeginDrawing();
-    ClearBackground(RAYWHITE);
-    DrawText("Move player one with arrow keys", 10, 10, 20, DARKGRAY);
-    char accelerationText[50];
-    sprintf(accelerationText, "Acceleration: %.2f", acceleration);
-    DrawText(accelerationText, 10, 30, 20, BLACK);
-
-    char berserkCoords[50];
-    for (int i = 1; i < pointCount; i++)
+    if (rigth == true)
     {
-      DrawLineV(points[i - 1], points[i], RED);
+      // Check comparations
+      //   for (size_t i = 0; i < berserk.size.y; i++)
+      //   {
+      //     // ball.position collides with the paddle
+      //     // adjust ball.position.x comparative
+      //     if (((int)berserk.position.y + i) == centerVectorBallY + (ball.size.y / 2) && centerVectorBallX <= berserk.position.x)
+      //     {
+      //       float centerPosition = (i - (berserk.size.y / 2));
+      //       degrees = centerPosition * 180.f / berserk.size.y;
+      //       top = centerPosition > 30;
+      //       rigth = false;
+      //     }
+      //   }
+      // }
+      // else
+      // {
+      //   for (size_t i = 0; i < griffith.size.y; i++)
+      //   {
+      //     // ball.position collides with the paddle
+      //     // adjust ball.position.x comparative
+      //     if (((int)griffith.position.y + i) == centerVectorBallY + (ball.size.y / 2) && centerVectorBallX >= griffith.position.x)
+      //     {
+      //       float centerPosition = (i - (griffith.size.y / 2));
+      //       degrees = centerPosition * 180.f / griffith.size.y;
+      //       top = centerPosition > 29;
+      //       rigth = true;
+      //     }
+      //   }
+      // }
+
+      acceleration += 0;
+
+      BeginDrawing();
+      ClearBackground(RAYWHITE);
+      DrawText("Move player one with arrow keys", 10, 10, 20, DARKGRAY);
+      char accelerationText[50];
+      sprintf(accelerationText, "Acceleration: %.2f", acceleration);
+      DrawText(accelerationText, 10, 30, 20, BLACK);
+
+      char berserkCoords[50];
+      for (int i = 1; i < pointCount; i++)
+      {
+        DrawLineV(points[i - 1], points[i], RED);
+      }
+      DrawVector(ball);
+      DrawVector(berserk);
+      DrawVector(griffith);
+      EndDrawing();
     }
-    DrawVector(ball);
-    DrawVector(berserk);
-    DrawVector(griffith);
-    EndDrawing();
+
+    // De-Initialization
+    CloseWindow(); // Close window and OpenGL context
+
+    return 0;
   }
-
-  // De-Initialization
-  CloseWindow(); // Close window and OpenGL context
-
-  return 0;
-}
