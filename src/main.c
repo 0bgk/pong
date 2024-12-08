@@ -91,11 +91,13 @@ int main(void)
   struct Vector ball;
   struct Vector berserk;
   struct Vector griffith;
+
   // Vector for draw ball direction
   // Vector2 points[MAX_POINTS] = {0};
 
   InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "PONG");
-  SetTargetFPS(120); // Set our game to run at 60 frames-per-second
+  // Set our game to run at 60 frames-per-second
+  SetTargetFPS(120);
 
   // Create game metrics
   struct GameMetrics gameMetrics;
