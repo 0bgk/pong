@@ -2,11 +2,20 @@
 #include <stdio.h>
 #include <math.h>
 
-// CONSTANTS
+#define MAX_POINTS 10000
 const int SCREEN_WIDTH = 800;
 const int SCREEN_HEIGHT = 450;
 const float PLAYER_VELOCITY = 300.f;
-#define MAX_POINTS 10000
+
+struct GameMetrics
+{
+  float velocity;
+  float acceleration;
+  bool right;
+  bool top;
+  float degrees;
+  int pointCount;
+};
 
 struct Vector
 {
@@ -15,14 +24,13 @@ struct Vector
   Color color;
 };
 
-struct Vector CreatePlayer(int SCREEN_WIDTH, int SCREEN_HEIGHT, Color color, short number)
+struct Vector CreatePlayer(short playerNum)
 {
   struct Vector player;
   player.size = (Vector2){12, 60};
-  player.position.x = number == 2 ? (float)(SCREEN_WIDTH - player.size.x) : 0.f;
+  player.position.x = playerNum == 2 ? (float)(SCREEN_WIDTH - player.size.x) : 0.f;
   player.position.y = (float)((SCREEN_HEIGHT / 2) - (player.size.y / 2));
-  player.color = color;
-
+  player.color = BLACK;
   return player;
 }
 
@@ -33,7 +41,6 @@ struct Vector CreateBall()
   ball.position.y = (float)((SCREEN_HEIGHT / 2) - (ball.size.y / 2));
   ball.position.x = (float)((SCREEN_WIDTH / 2) - (ball.size.x / 2));
   ball.color = BLACK;
-
   return ball;
 }
 
@@ -42,17 +49,18 @@ void DrawVector(struct Vector player)
   DrawRectangleV(player.position, player.size, player.color);
 }
 
-float CalcMRU(float v, float t)
-{
-  return v * t;
-}
-
-void PayerMotion(struct Vector *player, int upKey, int downKey, float deltaTime)
+void PlayerMotion(struct Vector *player, int upKey, int downKey, float deltaTime)
 {
   if (IsKeyDown(upKey) && player->position.y > 0)
-    player->position.y -= CalcMRU(PLAYER_VELOCITY, deltaTime);
+    player->position.y -= PLAYER_VELOCITY * deltaTime;
   if (IsKeyDown(downKey) && (player->position.y + player->size.y) < SCREEN_HEIGHT)
-    player->position.y += CalcMRU(PLAYER_VELOCITY, deltaTime);
+    player->position.y += PLAYER_VELOCITY * deltaTime;
+}
+
+void BallMotion(struct Vector *ball, bool right, bool top, float x, float y)
+{
+  ball->position.x += right ? -x : x;
+  ball->position.y += top ? -y : y;
 }
 
 void PayerCollision(struct Vector *player, float centerBallY, float *degrees, bool *top, bool *right)
@@ -65,25 +73,34 @@ void PayerCollision(struct Vector *player, float centerBallY, float *degrees, bo
   *right = !(*right);
 }
 
-// Program main entry point
+void ResetGame(struct GameMetrics *gameMetrics, struct Vector *ball, struct Vector *player, struct Vector *player2)
+{
+  gameMetrics->velocity = 300.f;
+  gameMetrics->degrees = 0.f;
+  gameMetrics->acceleration = 0.f;
+  gameMetrics->right = (int)(GetTime() * 1000) % 2;
+  gameMetrics->top = true;
+  *ball = CreateBall();
+  *player = CreatePlayer(1);
+  *player2 = CreatePlayer(2);
+}
+
 int main(void)
 {
   // Create Vectors
-  struct Vector ball = CreateBall();
-  struct Vector berserk = CreatePlayer(SCREEN_WIDTH, SCREEN_HEIGHT, BLACK, 1);
-  struct Vector griffith = CreatePlayer(SCREEN_WIDTH, SCREEN_HEIGHT, BLACK, 2);
-  Vector2 points[MAX_POINTS] = {0};
+  struct Vector ball;
+  struct Vector berserk;
+  struct Vector griffith;
+  // Vector for draw ball direction
+  // Vector2 points[MAX_POINTS] = {0};
 
-  InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "raylib [core] example - basic window");
+  InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "PONG");
   SetTargetFPS(120); // Set our game to run at 60 frames-per-second
 
-  float velocity = 400.f;
-  float degrees = 0.f;
-  float acceleration = 0.f;
-  // bool randomBool = (int)(GetTime() * 1000) % 2;
-  bool right = true;
-  bool top = true;
-  int pointCount = 0;
+  // Create game metrics
+  struct GameMetrics gameMetrics;
+  // Reset game metrics when game starts
+  ResetGame(&gameMetrics, &ball, &berserk, &griffith);
 
   // Main game loop
   // Detect window close button or ESC key
@@ -93,77 +110,81 @@ int main(void)
     float deltaTime = GetFrameTime();
 
     // Player motions
-    PayerMotion(&berserk, KEY_W, KEY_S, deltaTime);
-    PayerMotion(&griffith, KEY_UP, KEY_DOWN, deltaTime);
+    PlayerMotion(&berserk, KEY_W, KEY_S, deltaTime);
+    PlayerMotion(&griffith, KEY_UP, KEY_DOWN, deltaTime);
 
     // Convert degrees to radians
-    double radians = degrees * M_PI / 180.0;
+    double radians = gameMetrics.degrees * M_PI / 180.0;
 
-    // Calc velocity and acceleration of axles
-    float voy = velocity * sin(radians);
-    float vox = velocity * cos(radians);
-    float ay = acceleration * sin(radians);
-    float ax = acceleration * cos(radians);
+    // Calc velocity and acceleration of axles with Pythagoras and Cinematics
+    float voy = gameMetrics.velocity * sin(radians);
+    float vox = gameMetrics.velocity * cos(radians);
+    float ay = gameMetrics.acceleration * sin(radians);
+    float ax = gameMetrics.acceleration * cos(radians);
 
     float x = vox * deltaTime + 0.5f * ax * pow(deltaTime, 2);
     float y = voy * deltaTime + 0.5f * ay * pow(deltaTime, 2);
 
     float centerBallY = (ball.position.y + (ball.size.y / 2));
-    float centerBallX = (ball.position.x + (ball.size.x / 2));
-    // Almacena la posición actual del vector
-    if (pointCount < MAX_POINTS)
-    {
-      points[pointCount++] = (Vector2){
-          centerBallX,
-          centerBallY,
-      };
-    }
+    float centerBallX = gameMetrics.right == true ? (ball.position.x - ball.size.x) : (ball.position.x + ball.size.x);
 
-    // collision with the lower and upper window hegith
+    // Save actual position of vectors for draw it
+    // if (gameMetrics.pointCount < MAX_POINTS)
+    // {
+    //   points[gameMetrics.pointCount++] = (Vector2){
+    //       centerBallX,
+    //       centerBallY,
+    //   };
+    // }
+
+    // Ball collision with upper and lower window height
     if ((ball.position.y < 0) || (ball.position.y > (SCREEN_HEIGHT - ball.size.y)))
     {
       ball.position.y = (ball.position.y < 0) ? 0 : (SCREEN_HEIGHT - ball.size.y);
-      top = !top;
+      gameMetrics.top = !gameMetrics.top;
     }
 
     // Ball motion
-    ball.position.x += right ? -x : x;
-    ball.position.y += top ? -y : y;
+    BallMotion(&ball, gameMetrics.right, gameMetrics.top, x, y);
 
     // Player collition
-    struct Vector *currentPlayer = right ? &berserk : &griffith;
+    struct Vector *currentPlayer = gameMetrics.right ? &berserk : &griffith;
     float playerPosX = currentPlayer->position.x;
     float playerPosY = currentPlayer->position.y;
     float playerSizeY = currentPlayer->size.y;
 
     bool includesInsidePlayer = (centerBallY >= playerPosY) && (centerBallY <= (playerPosY + playerSizeY));
-    bool colidesWithPlayer = right ? (playerPosX >= centerBallX) : (playerPosX <= centerBallX);
+    bool colidesWithPlayer = gameMetrics.right ? (playerPosX >= centerBallX) : (playerPosX <= centerBallX);
 
     if (includesInsidePlayer && colidesWithPlayer)
-      PayerCollision(currentPlayer, centerBallY, &degrees, &top, &right);
+    {
+      PayerCollision(currentPlayer, centerBallY, &gameMetrics.degrees, &gameMetrics.top, &gameMetrics.right);
+      gameMetrics.acceleration += 50;
+    }
 
-    acceleration += 10;
+    // Reset the game when the ball goes out of bounds
+    if ((centerBallX < -50) || (centerBallX > (SCREEN_WIDTH + 50)))
+    {
+      ResetGame(&gameMetrics, &ball, &berserk, &griffith);
+    }
 
+    // Draw items
     BeginDrawing();
+    // Draw vector position
+    //  for (int i = 1; i < gameMetrics.pointCount; i++)
+    //  {
+    //    DrawLineV(points[i - 1], points[i], RED);
+    //  }
     ClearBackground(RAYWHITE);
     DrawText("Move player one with arrow keys", 10, 10, 20, DARKGRAY);
-    char accelerationText[50];
-    sprintf(accelerationText, "Acceleration: %.2f", centerBallY - berserk.position.y);
-    DrawText(accelerationText, 10, 30, 20, BLACK);
-
-    char berserkCoords[50];
-    for (int i = 1; i < pointCount; i++)
-    {
-      DrawLineV(points[i - 1], points[i], RED);
-    }
     DrawVector(ball);
     DrawVector(berserk);
     DrawVector(griffith);
     EndDrawing();
   }
 
-  // De-Initialization
-  CloseWindow(); // Close window and OpenGL context
+  // Close window and OpenGL context
+  CloseWindow();
 
   return 0;
 }
