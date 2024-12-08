@@ -178,7 +178,6 @@ int main(void)
     //    DrawLineV(points[i - 1], points[i], RED);
     //  }
     ClearBackground(RAYWHITE);
-    DrawText("Move player one with arrow keys", 10, 10, 20, DARKGRAY);
     DrawVector(ball);
     DrawVector(berserk);
     DrawVector(griffith);
