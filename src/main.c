@@ -47,17 +47,22 @@ float CalcMRU(float v, float t)
   return v * t;
 }
 
-float CalcMRUA(float v, float t, float a)
-{
-  return v * t + 1 / 2 * a * pow(t, 2);
-}
-
 void PayerMotion(struct Vector *player, int upKey, int downKey, float deltaTime)
 {
   if (IsKeyDown(upKey) && player->position.y > 0)
     player->position.y -= CalcMRU(PLAYER_VELOCITY, deltaTime);
   if (IsKeyDown(downKey) && (player->position.y + player->size.y) < SCREEN_HEIGHT)
     player->position.y += CalcMRU(PLAYER_VELOCITY, deltaTime);
+}
+
+void PayerCollision(struct Vector *player, float centerBallY, float *degrees, bool *top, bool *right)
+{
+  float vectorColides = centerBallY - player->position.y;
+  float centerPosition = (vectorColides - (player->size.y / 2));
+
+  *degrees = centerPosition * 180.f / player->size.y;
+  *top = centerPosition > 30;
+  *right = !(*right);
 }
 
 // Program main entry point
@@ -72,11 +77,11 @@ int main(void)
   InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "raylib [core] example - basic window");
   SetTargetFPS(120); // Set our game to run at 60 frames-per-second
 
-  float velocity = 300.f;
+  float velocity = 400.f;
   float degrees = 0.f;
-  float acceleration = 0;
+  float acceleration = 0.f;
   // bool randomBool = (int)(GetTime() * 1000) % 2;
-  bool rigth = true;
+  bool right = true;
   bool top = true;
   int pointCount = 0;
 
@@ -87,11 +92,11 @@ int main(void)
     // Calc delta time
     float deltaTime = GetFrameTime();
 
+    // Player motions
     PayerMotion(&berserk, KEY_W, KEY_S, deltaTime);
     PayerMotion(&griffith, KEY_UP, KEY_DOWN, deltaTime);
 
-    // Vector Ball values
-    // Pythagoras
+    // Convert degrees to radians
     double radians = degrees * M_PI / 180.0;
 
     // Calc velocity and acceleration of axles
@@ -103,14 +108,14 @@ int main(void)
     float x = vox * deltaTime + 0.5f * ax * pow(deltaTime, 2);
     float y = voy * deltaTime + 0.5f * ay * pow(deltaTime, 2);
 
-    float centerVectorBallY = (ball.position.y + (ball.size.y / 2));
-    float centerVectorBallX = (ball.position.x + (ball.size.x / 2));
+    float centerBallY = (ball.position.y + (ball.size.y / 2));
+    float centerBallX = (ball.position.x + (ball.size.x / 2));
     // Almacena la posición actual del vector
     if (pointCount < MAX_POINTS)
     {
       points[pointCount++] = (Vector2){
-          centerVectorBallX,
-          centerVectorBallY,
+          centerBallX,
+          centerBallY,
       };
     }
 
@@ -121,71 +126,44 @@ int main(void)
       top = !top;
     }
 
-    // Test
-    if (ball.position.x < 0)
-    {
-      rigth = !rigth;
-    }
-
     // Ball motion
-    ball.position.x += rigth ? -x : x;
+    ball.position.x += right ? -x : x;
     ball.position.y += top ? -y : y;
 
     // Player collition
-    if (rigth == true)
+    struct Vector *currentPlayer = right ? &berserk : &griffith;
+    float playerPosX = currentPlayer->position.x;
+    float playerPosY = currentPlayer->position.y;
+    float playerSizeY = currentPlayer->size.y;
+
+    bool includesInsidePlayer = (centerBallY >= playerPosY) && (centerBallY <= (playerPosY + playerSizeY));
+    bool colidesWithPlayer = right ? (playerPosX >= centerBallX) : (playerPosX <= centerBallX);
+
+    if (includesInsidePlayer && colidesWithPlayer)
+      PayerCollision(currentPlayer, centerBallY, &degrees, &top, &right);
+
+    acceleration += 10;
+
+    BeginDrawing();
+    ClearBackground(RAYWHITE);
+    DrawText("Move player one with arrow keys", 10, 10, 20, DARKGRAY);
+    char accelerationText[50];
+    sprintf(accelerationText, "Acceleration: %.2f", centerBallY - berserk.position.y);
+    DrawText(accelerationText, 10, 30, 20, BLACK);
+
+    char berserkCoords[50];
+    for (int i = 1; i < pointCount; i++)
     {
-      // Check comparations
-      //   for (size_t i = 0; i < berserk.size.y; i++)
-      //   {
-      //     // ball.position collides with the paddle
-      //     // adjust ball.position.x comparative
-      //     if (((int)berserk.position.y + i) == centerVectorBallY + (ball.size.y / 2) && centerVectorBallX <= berserk.position.x)
-      //     {
-      //       float centerPosition = (i - (berserk.size.y / 2));
-      //       degrees = centerPosition * 180.f / berserk.size.y;
-      //       top = centerPosition > 30;
-      //       rigth = false;
-      //     }
-      //   }
-      // }
-      // else
-      // {
-      //   for (size_t i = 0; i < griffith.size.y; i++)
-      //   {
-      //     // ball.position collides with the paddle
-      //     // adjust ball.position.x comparative
-      //     if (((int)griffith.position.y + i) == centerVectorBallY + (ball.size.y / 2) && centerVectorBallX >= griffith.position.x)
-      //     {
-      //       float centerPosition = (i - (griffith.size.y / 2));
-      //       degrees = centerPosition * 180.f / griffith.size.y;
-      //       top = centerPosition > 29;
-      //       rigth = true;
-      //     }
-      //   }
-      // }
-
-      acceleration += 0;
-
-      BeginDrawing();
-      ClearBackground(RAYWHITE);
-      DrawText("Move player one with arrow keys", 10, 10, 20, DARKGRAY);
-      char accelerationText[50];
-      sprintf(accelerationText, "Acceleration: %.2f", acceleration);
-      DrawText(accelerationText, 10, 30, 20, BLACK);
-
-      char berserkCoords[50];
-      for (int i = 1; i < pointCount; i++)
-      {
-        DrawLineV(points[i - 1], points[i], RED);
-      }
-      DrawVector(ball);
-      DrawVector(berserk);
-      DrawVector(griffith);
-      EndDrawing();
+      DrawLineV(points[i - 1], points[i], RED);
     }
-
-    // De-Initialization
-    CloseWindow(); // Close window and OpenGL context
-
-    return 0;
+    DrawVector(ball);
+    DrawVector(berserk);
+    DrawVector(griffith);
+    EndDrawing();
   }
+
+  // De-Initialization
+  CloseWindow(); // Close window and OpenGL context
+
+  return 0;
+}
