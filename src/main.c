@@ -161,7 +161,7 @@ int main(void)
     if (includesInsidePlayer && colidesWithPlayer)
     {
       PayerCollision(currentPlayer, centerBallY, &gameMetrics.degrees, &gameMetrics.top, &gameMetrics.right);
-      gameMetrics.acceleration += 50;
+      gameMetrics.acceleration += 10000;
     }
 
     // Reset the game when the ball goes out of bounds
